@@ -11,6 +11,8 @@ import {
   affiliate,
   getAffiliate,
   getWithdrawalList,
+  fetchPriceId, // Keep this import
+  referralLink, // Add this new import
 } from "@/app/api/api";
 
 interface Partner {
@@ -77,12 +79,32 @@ interface Withdrawal {
   updated_at: string;
 }
 
+// Interface for price IDs response
+interface PriceIdResponse {
+  success: boolean;
+  errors: string[];
+  response: {
+    available_price_id: Record<string, string>;
+  };
+  message: string;
+}
+
+// Add interface for referral link response
+interface ReferralLinkResponse {
+  success: boolean;
+  errors: string[];
+  response: {
+    redirect_url: string;
+  };
+  message: string;
+}
+
 const AffiliateDashboard = () => {
   const queryClient = useQueryClient();
   const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
   const [activeTab, setActiveTab] = useState("summary");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showCreateAffiliate, setShowCreateAffiliate] = useState(true); // Show only if not created
+  const [showCreateAffiliate, setShowCreateAffiliate] = useState(true);
 
   // TanStack Query hooks for fetching data
   const {
@@ -121,6 +143,16 @@ const AffiliateDashboard = () => {
     queryFn: getWithdrawalList,
   });
 
+  // Query for fetching price IDs
+  const {
+    data: priceIdData,
+    isLoading: priceIdLoading,
+    error: priceIdError,
+  } = useQuery<PriceIdResponse>({
+    queryKey: ["availablePriceIds"],
+    queryFn: fetchPriceId,
+  });
+
   // Fetch affiliate account
   const {
     data: affiliateData,
@@ -129,7 +161,7 @@ const AffiliateDashboard = () => {
   } = useQuery({
     queryKey: ["affiliateAccount"],
     queryFn: getAffiliate,
-    retry: false, // don't keep retrying if user has no account
+    retry: false,
   });
 
   // Update state when affiliate account exists
@@ -146,7 +178,7 @@ const AffiliateDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ["affiliateSummary"] });
       queryClient.invalidateQueries({ queryKey: ["affiliateCommissions"] });
       queryClient.invalidateQueries({ queryKey: ["affiliateAttributions"] });
-      setShowCreateAffiliate(false); // Hide after creation
+      setShowCreateAffiliate(false);
       toast.success("Affiliate account created successfully!");
     },
     onError: (error: Error) => {
@@ -169,6 +201,18 @@ const AffiliateDashboard = () => {
     onError: (error: Error) => {
       const message = error.message || "Failed to submit withdrawal request.";
       setErrorMessage(message);
+      toast.error(message);
+    },
+  });
+
+  // New mutation for generating referral link
+  const referralLinkMutation = useMutation<ReferralLinkResponse, Error, string>({
+    mutationFn: referralLink,
+    onSuccess: () => {
+      toast.success("Referral link generated and copied!");
+    },
+    onError: (error: Error) => {
+      const message = error.message || "Failed to generate referral link.";
       toast.error(message);
     },
   });
@@ -198,6 +242,26 @@ const AffiliateDashboard = () => {
     affiliateCreationMutation.mutate();
   };
 
+  // New handler for copying referral link
+  const handleCopyReferralLink = async (planAmount: string) => {
+    const priceId = priceIdData?.response?.available_price_id?.[planAmount];
+    if (!priceId) {
+      toast.error("Price ID not available. Please refresh.");
+      return;
+    }
+
+    referralLinkMutation.mutate(priceId, {
+      onSuccess: (data) => {
+        if (data.success && data.response.redirect_url) {
+          navigator.clipboard.writeText(data.response.redirect_url).catch(() => {
+            // Fallback: alert the URL if clipboard fails
+            window.alert(`Referral link: ${data.response.redirect_url}`);
+          });
+        }
+      },
+    });
+  };
+
   const formatCurrency = (minor: number) => `$${(minor / 100).toFixed(2)}`;
 
   const formatDate = (dateString: string) =>
@@ -218,8 +282,12 @@ const AffiliateDashboard = () => {
     }
   };
 
+  // Helper function to format plan amount
+  const formatPlanAmount = (amount: string) => `$${parseInt(amount)}/mo`;
+
   const tabs = [
     { id: "summary", label: "Overview", icon: "📊" },
+    { id: "plans", label: "Referral Plans", icon: "🔗" },
     { id: "commissions", label: "Commissions", icon: "💰" },
     { id: "attributions", label: "Attributions", icon: "👥" },
     { id: "withdrawals", label: "Withdrawals", icon: "💸" },
@@ -334,6 +402,141 @@ const AffiliateDashboard = () => {
             </div>
           </>
         );
+
+      // "Referral Plans" tab - Updated to use API for links
+      case "plans":
+        return (
+          <div className="space-y-6">
+            {/* Referral Links Section */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <span className="mr-2">🔗</span> Your Referral Plans
+              </h3>
+              {priceIdLoading && (
+                <div className="text-center text-gray-500 py-8">
+                  Loading available plans...
+                </div>
+              )}
+              {priceIdError && (
+                <div className="text-center text-red-500 py-8">
+                  Error loading plans: {(priceIdError as Error).message}
+                </div>
+              )}
+              {priceIdData && priceIdData.success && (
+                <>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Share these referral links to earn commissions on new
+                    subscriptions. Each successful signup earns you a percentage
+                    of the subscription revenue.
+                  </p>
+                  
+                  {/* Plans Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {Object.entries(priceIdData.response.available_price_id)
+                      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                      .map(([planAmount, priceId]) => (
+                        <div
+                          key={planAmount}
+                          className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-xl shadow-sm border border-purple-200 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-lg font-semibold text-purple-900">
+                              {formatPlanAmount(planAmount)}
+                            </h4>
+                            <span className="text-2xl">⭐</span>
+                          </div>
+                          
+                          {/* Copy Link Button - Updated to use API */}
+                          <div className="space-y-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500">Link:</span>
+                              <button
+                                onClick={() => handleCopyReferralLink(planAmount)}
+                                disabled={referralLinkMutation.isPending}
+                                className={`flex-1 px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
+                                  referralLinkMutation.isPending
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    : "bg-white border-gray-300 hover:bg-gray-50"
+                                }`}
+                              >
+                                {referralLinkMutation.isPending
+                                  ? "Generating..."
+                                  : "Copy Referral Link"}
+                              </button>
+                            </div>
+                        
+                          </div>
+                          
+                          {/* Usage Stats */}
+                          <div className="mt-4 pt-4 border-t border-purple-100">
+                            <p className="text-xs text-gray-600">
+                              Earn {summary?.partner?.first_payment_percent}% on first payment
+                              + {summary?.partner?.recurring_percent}% recurring
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  
+                  {/* Quick Stats */}
+                  {summary && (
+                    <div className="mt-6 p-4 bg-green-50 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        💡 <strong>Total Referral Earnings:</strong> {formatCurrency(summary.totals.accrued_minor)} |{" "}
+                        <strong>Active Referrals:</strong> {attributions?.filter(a => a.first_payment_commission_paid).length || 0}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              {!priceIdData?.success && priceIdData && (
+                <div className="text-center text-red-500 py-8">
+                  <p>Failed to load plans: {priceIdData.message}</p>
+                  {priceIdData.errors.length > 0 && (
+                    <ul className="mt-2 text-sm">
+                      {priceIdData.errors.map((error, index) => (
+                        <li key={index} className="list-disc list-inside">
+                          {error}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* How It Works Section */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                How Referrals Work
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <span className="text-xl">1</span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-1">Share Link</h4>
+                  <p className="text-gray-600">Send your unique referral link to potential customers</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <span className="text-xl">2</span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-1">Customer Signs Up</h4>
+                  <p className="text-gray-600">They choose a plan and complete payment</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <span className="text-xl">3</span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 mb-1">Earn Commission</h4>
+                  <p className="text-gray-600">You earn commission automatically</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       case "commissions":
         return (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -407,6 +610,7 @@ const AffiliateDashboard = () => {
             )}
           </div>
         );
+
       case "attributions":
         return (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -470,6 +674,7 @@ const AffiliateDashboard = () => {
             )}
           </div>
         );
+
       case "withdrawals":
         return (
           <>
@@ -538,6 +743,7 @@ const AffiliateDashboard = () => {
             </div>
           </>
         );
+
       default:
         return null;
     }
@@ -562,7 +768,6 @@ const AffiliateDashboard = () => {
         </div>
 
         {/* Create Affiliate Card - Conditional */}
-        {/* Create Affiliate Card - Conditional */}
         {affiliateLoading ? (
           <div className="bg-white shadow-sm rounded-xl border border-gray-200 p-6 mb-8 text-center text-gray-500">
             Checking affiliate status...
@@ -573,7 +778,7 @@ const AffiliateDashboard = () => {
               <span className="text-3xl">✅</span>
               <div className="flex-1">
                 <h2 className="text-xl font-semibold text-green-900 mb-2">
-                  You’re Already an Affiliate
+                  You're Already an Affiliate
                 </h2>
                 <p className="text-green-700">
                   Your affiliate account is active! Start sharing your referral

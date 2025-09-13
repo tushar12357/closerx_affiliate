@@ -117,3 +117,12 @@ export const Login=async(data:any)=>{
   const response=await axios.post(`${baseURL}auth/login/`,data)
   return response.data
 }
+
+export const fetchPriceId=async()=>{
+  const response=await axiosInstance.get('affiliate/fetch_available_price_id/')
+  return response.data
+}
+export const referralLink=async(price_id:string)=>{
+  const response=await axiosInstance.get(`affiliate/generate/redircting_link/?price_id=${price_id}`)
+  return response.data
+}
