@@ -7,7 +7,7 @@ import Cookies from "js-cookie";
 import AffiliateDashboard from "../components/AffiliateDashboard";
 import { UserDropdown } from "../components/UserDropdown";
 
-export default function DashboardPage() {
+function DashboardPage() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -23,7 +23,6 @@ export default function DashboardPage() {
   }, [searchParams]);
 
   return (
-    <Suspense>
     <div className="flex flex-col min-h-screen">
       <header className="bg-background-color-secondary shadow">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -44,6 +43,13 @@ export default function DashboardPage() {
         <AffiliateDashboard />
       </main>
     </div>
-    </Suspense>
   );
+}
+
+export default function Home(){
+  return(
+    <Suspense>
+      <DashboardPage/>
+    </Suspense>
+  )
 }
