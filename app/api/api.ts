@@ -11,7 +11,7 @@ export const getBaseurl = () => {
     if (process.env.NODE_ENV === "development") {
       return "https://test.closerx.ai/api/";
     }else{
-      return "https://app.closerx.ai/api/"
+      return "https://test.closerx.ai/api/"
     }
   }
 
