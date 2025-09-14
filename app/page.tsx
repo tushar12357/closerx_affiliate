@@ -1,27 +1,13 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
 
 import AffiliateDashboard from "../components/AffiliateDashboard";
 import { UserDropdown } from "../components/UserDropdown";
 
 function DashboardPage() {
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
-    const userId = searchParams.get("user_id");
-
-    if (accessToken && refreshToken && userId) {
-      Cookies.set("access_token", accessToken); // expires in 7 days
-      Cookies.set("refresh_token", refreshToken);
-      Cookies.set("user_id", userId);
-    }
-  }, [searchParams]);
-
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-background-color-secondary shadow">
@@ -46,10 +32,10 @@ function DashboardPage() {
   );
 }
 
-export default function Home(){
-  return(
+export default function Home() {
+  return (
     <Suspense>
-      <DashboardPage/>
+      <DashboardPage />
     </Suspense>
-  )
+  );
 }

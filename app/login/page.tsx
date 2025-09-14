@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import Link from "next/link";
 import { LoginScene } from "./LoginScene";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { Login } from "../api/api";
 import Cookies from "js-cookie";
@@ -23,6 +23,21 @@ export default function SimpleLoginPage() {
   } = useForm<LoginFormValues>();
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+
+  
+  const searchParams = useSearchParams();
+  const accessToken = searchParams.get("access_token");
+  const refreshToken = searchParams.get("refresh_token");
+  const userId = searchParams.get("user_id");
+  useEffect(() => {
+    if (accessToken && refreshToken && userId) {
+      Cookies.set("access_token", accessToken);
+      Cookies.set("refresh_token", refreshToken);
+      Cookies.set("user_id", userId);
+      router.push("/");
+    }
+  }, [searchParams, router]);
 
   const loginMutation = useMutation({
     mutationFn: Login,
