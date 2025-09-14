@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -8,11 +8,10 @@ import {
   affiliateCommissions,
   affiliateSummary,
   requestWithdrawal,
-  affiliate,
   getAffiliate,
   getWithdrawalList,
-  fetchPriceId, // Keep this import
-  referralLink, // Add this new import
+  fetchPriceId,
+  referralLink,
 } from "@/app/api/api";
 
 interface Partner {
@@ -79,7 +78,6 @@ interface Withdrawal {
   updated_at: string;
 }
 
-// Interface for price IDs response
 interface PriceIdResponse {
   success: boolean;
   errors: string[];
@@ -89,7 +87,6 @@ interface PriceIdResponse {
   message: string;
 }
 
-// Add interface for referral link response
 interface ReferralLinkResponse {
   success: boolean;
   errors: string[];
@@ -101,10 +98,9 @@ interface ReferralLinkResponse {
 
 const AffiliateDashboard = () => {
   const queryClient = useQueryClient();
-  const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
-  const [activeTab, setActiveTab] = useState("summary");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showCreateAffiliate, setShowCreateAffiliate] = useState(true);
+  const [withdrawalAmount, setWithdrawalAmount] = React.useState<string>("");
+  const [activeTab, setActiveTab] = React.useState("summary");
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   // TanStack Query hooks for fetching data
   const {
@@ -143,7 +139,6 @@ const AffiliateDashboard = () => {
     queryFn: getWithdrawalList,
   });
 
-  // Query for fetching price IDs
   const {
     data: priceIdData,
     isLoading: priceIdLoading,
@@ -153,7 +148,6 @@ const AffiliateDashboard = () => {
     queryFn: fetchPriceId,
   });
 
-  // Fetch affiliate account
   const {
     data: affiliateData,
     isLoading: affiliateLoading,
@@ -162,30 +156,6 @@ const AffiliateDashboard = () => {
     queryKey: ["affiliateAccount"],
     queryFn: getAffiliate,
     retry: false,
-  });
-
-  // Update state when affiliate account exists
-  useEffect(() => {
-    if (affiliateData) {
-      setShowCreateAffiliate(false);
-    }
-  }, [affiliateData]);
-
-  // Mutation for creating affiliate account
-  const affiliateCreationMutation = useMutation({
-    mutationFn: affiliate,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["affiliateSummary"] });
-      queryClient.invalidateQueries({ queryKey: ["affiliateCommissions"] });
-      queryClient.invalidateQueries({ queryKey: ["affiliateAttributions"] });
-      setShowCreateAffiliate(false);
-      toast.success("Affiliate account created successfully!");
-    },
-    onError: (error: Error) => {
-      const message = error.message || "Failed to create affiliate account.";
-      setErrorMessage(message);
-      toast.error(message);
-    },
   });
 
   // Mutation for submitting a withdrawal
@@ -205,7 +175,6 @@ const AffiliateDashboard = () => {
     },
   });
 
-  // New mutation for generating referral link
   const referralLinkMutation = useMutation<ReferralLinkResponse, Error, string>({
     mutationFn: referralLink,
     onSuccess: () => {
@@ -238,11 +207,6 @@ const AffiliateDashboard = () => {
     withdrawalMutation.mutate();
   };
 
-  const handleCreateAffiliate = () => {
-    affiliateCreationMutation.mutate();
-  };
-
-  // New handler for copying referral link
   const handleCopyReferralLink = async (planAmount: string) => {
     const priceId = priceIdData?.response?.available_price_id?.[planAmount];
     if (!priceId) {
@@ -254,7 +218,6 @@ const AffiliateDashboard = () => {
       onSuccess: (data) => {
         if (data.success && data.response.redirect_url) {
           navigator.clipboard.writeText(data.response.redirect_url).catch(() => {
-            // Fallback: alert the URL if clipboard fails
             window.alert(`Referral link: ${data.response.redirect_url}`);
           });
         }
@@ -282,7 +245,6 @@ const AffiliateDashboard = () => {
     }
   };
 
-  // Helper function to format plan amount
   const formatPlanAmount = (amount: string) => `$${parseInt(amount)}/mo`;
 
   const tabs = [
@@ -298,7 +260,6 @@ const AffiliateDashboard = () => {
       case "summary":
         return (
           <>
-            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-sm border border-blue-200">
                 <div className="flex items-center justify-between mb-2">
@@ -343,7 +304,6 @@ const AffiliateDashboard = () => {
               </div>
             </div>
 
-            {/* Withdrawal Form */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <span className="mr-2">💸</span> Request a Withdrawal
@@ -403,11 +363,9 @@ const AffiliateDashboard = () => {
           </>
         );
 
-      // "Referral Plans" tab - Updated to use API for links
       case "plans":
         return (
           <div className="space-y-6">
-            {/* Referral Links Section */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <span className="mr-2">🔗</span> Your Referral Plans
@@ -429,8 +387,6 @@ const AffiliateDashboard = () => {
                     subscriptions. Each successful signup earns you a percentage
                     of the subscription revenue.
                   </p>
-                  
-                  {/* Plans Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {Object.entries(priceIdData.response.available_price_id)
                       .sort(([a], [b]) => parseInt(a) - parseInt(b))
@@ -445,8 +401,6 @@ const AffiliateDashboard = () => {
                             </h4>
                             <span className="text-2xl">⭐</span>
                           </div>
-                          
-                          {/* Copy Link Button - Updated to use API */}
                           <div className="space-y-3">
                             <div className="flex items-center space-x-2">
                               <span className="text-xs text-gray-500">Link:</span>
@@ -464,10 +418,7 @@ const AffiliateDashboard = () => {
                                   : "Copy Referral Link"}
                               </button>
                             </div>
-                        
                           </div>
-                          
-                          {/* Usage Stats */}
                           <div className="mt-4 pt-4 border-t border-purple-100">
                             <p className="text-xs text-gray-600">
                               Earn {summary?.partner?.first_payment_percent}% on first payment
@@ -477,8 +428,6 @@ const AffiliateDashboard = () => {
                         </div>
                       ))}
                   </div>
-                  
-                  {/* Quick Stats */}
                   {summary && (
                     <div className="mt-6 p-4 bg-green-50 rounded-lg">
                       <p className="text-sm text-green-800">
@@ -504,8 +453,6 @@ const AffiliateDashboard = () => {
                 </div>
               )}
             </div>
-
-            {/* How It Works Section */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 How Referrals Work
@@ -678,7 +625,6 @@ const AffiliateDashboard = () => {
       case "withdrawals":
         return (
           <>
-            {/* Withdrawal History Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               {withdrawalsLoading && (
                 <div className="p-6 text-center text-gray-500">
@@ -767,7 +713,6 @@ const AffiliateDashboard = () => {
           </p>
         </div>
 
-        {/* Create Affiliate Card - Conditional */}
         {affiliateLoading ? (
           <div className="bg-white shadow-sm rounded-xl border border-gray-200 p-6 mb-8 text-center text-gray-500">
             Checking affiliate status...
@@ -778,74 +723,54 @@ const AffiliateDashboard = () => {
               <span className="text-3xl">✅</span>
               <div className="flex-1">
                 <h2 className="text-xl font-semibold text-green-900 mb-2">
-                  You're Already an Affiliate
+                  You're an Affiliate
                 </h2>
                 <p className="text-green-700">
-                  Your affiliate account is active! Start sharing your referral
-                  links and track commissions below.
+                  Your affiliate account is active! Share your referral links and track commissions below.
                 </p>
               </div>
             </div>
           </div>
         ) : (
-          showCreateAffiliate && (
-            <div className="bg-white shadow-sm rounded-xl border border-gray-200 p-6 mb-8">
-              <div className="flex items-start space-x-4">
-                <span className="text-3xl">🚀</span>
-                <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                    Become an Affiliate
-                  </h2>
-                  <p className="text-gray-600 mb-4">
-                    Join our affiliate program to start earning commissions by
-                    referring new customers!
-                  </p>
-                  <button
-                    onClick={handleCreateAffiliate}
-                    disabled={affiliateCreationMutation.isPending}
-                    className={`inline-flex items-center px-4 py-2 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                      affiliateCreationMutation.isPending
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "btn-primary"
-                    }`}
-                  >
-                    {affiliateCreationMutation.isPending
-                      ? "Creating Account..."
-                      : "Create Affiliate Account"}
-                  </button>
-                  {errorMessage && (
-                    <p className="mt-3 text-sm text-red-600 flex items-center">
-                      <span className="mr-1">⚠️</span> {errorMessage}
-                    </p>
-                  )}
-                </div>
+          <div className="bg-red-50 shadow-sm rounded-xl border border-red-200 p-6 mb-8">
+            <div className="flex items-start space-x-4">
+              <span className="text-3xl">⚠️</span>
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold text-red-900 mb-2">
+                  Not an Affiliate
+                </h2>
+                <p className="text-red-700">
+                  You are not currently enrolled in the affiliate program.
+                </p>
               </div>
             </div>
-          )
+          </div>
         )}
 
-        {/* Tabs Navigation */}
-        <div className="bg-white shadow-sm rounded-xl border border-gray-200 mb-6 overflow-hidden">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-                  activeTab === tab.id
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <span className="mr-2 text-lg">{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+        {affiliateData && (
+          <>
+            <div className="bg-white shadow-sm rounded-xl border border-gray-200 mb-6 overflow-hidden">
+              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+                      activeTab === tab.id
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                  >
+                    <span className="mr-2 text-lg">{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
 
-        {/* Tab Content */}
-        <div className="space-y-6">{renderTabContent()}</div>
+            <div className="space-y-6">{renderTabContent()}</div>
+          </>
+        )}
 
         {summaryError && (
           <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
