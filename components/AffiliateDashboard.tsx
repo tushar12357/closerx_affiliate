@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -99,8 +99,8 @@ interface ReferralLinkResponse {
 const AffiliateDashboard = () => {
   const queryClient = useQueryClient();
   const [withdrawalAmount, setWithdrawalAmount] = React.useState<string>("");
-  const [activeTab, setActiveTab] = React.useState("summary");
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("summary");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadingPlans, setLoadingPlans] = useState<Record<string, boolean>>({});
   // TanStack Query hooks for fetching data
   const {
