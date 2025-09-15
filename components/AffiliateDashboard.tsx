@@ -101,7 +101,7 @@ const AffiliateDashboard = () => {
   const [withdrawalAmount, setWithdrawalAmount] = React.useState<string>("");
   const [activeTab, setActiveTab] = React.useState("summary");
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-
+  const [loadingPlans, setLoadingPlans] = useState<Record<string, boolean>>({});
   // TanStack Query hooks for fetching data
   const {
     data: summary,
@@ -175,16 +175,33 @@ const AffiliateDashboard = () => {
     },
   });
 
-  const referralLinkMutation = useMutation<ReferralLinkResponse, Error, string>({
-    mutationFn: referralLink,
-    onSuccess: () => {
-      toast.success("Referral link generated and copied!");
-    },
-    onError: (error: Error) => {
-      const message = error.message || "Failed to generate referral link.";
-      toast.error(message);
-    },
-  });
+  const referralLinkMutation = useMutation<ReferralLinkResponse, Error, string>(
+    {
+      mutationFn: referralLink,
+      onMutate: (priceId) => {
+        // Set loading state for the specific plan
+        setLoadingPlans((prev) => ({ ...prev, [priceId]: true }));
+      },
+      onSuccess: (data, priceId) => {
+        // Clear loading state for the specific plan
+        setLoadingPlans((prev) => ({ ...prev, [priceId]: false }));
+        toast.success("Referral link generated and copied!");
+        if (data.success && data.response.redirect_url) {
+          navigator.clipboard
+            .writeText(data.response.redirect_url)
+            .catch(() => {
+              window.alert(`Referral link: ${data.response.redirect_url}`);
+            });
+        }
+      },
+      onError: (error, priceId) => {
+        // Clear loading state for the specific plan
+        setLoadingPlans((prev) => ({ ...prev, [priceId]: false }));
+        const message = error.message || "Failed to generate referral link.";
+        toast.error(message);
+      },
+    }
+  );
 
   const handleWithdrawalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,15 +231,7 @@ const AffiliateDashboard = () => {
       return;
     }
 
-    referralLinkMutation.mutate(priceId, {
-      onSuccess: (data) => {
-        if (data.success && data.response.redirect_url) {
-          navigator.clipboard.writeText(data.response.redirect_url).catch(() => {
-            window.alert(`Referral link: ${data.response.redirect_url}`);
-          });
-        }
-      },
-    });
+    referralLinkMutation.mutate(priceId);
   };
 
   const formatCurrency = (minor: number) => `$${(minor / 100).toFixed(2)}`;
@@ -403,17 +412,19 @@ const AffiliateDashboard = () => {
                           </div>
                           <div className="space-y-3">
                             <div className="flex items-center space-x-2">
-                              <span className="text-xs text-gray-500">Link:</span>
+                              <span className="text-xs text-gray-500">
+                                Link:
+                              </span>
                               <button
                                 onClick={() => handleCopyReferralLink(planAmount)}
-                                disabled={referralLinkMutation.isPending}
+                                disabled={loadingPlans[priceId] || false}
                                 className={`flex-1 px-3 py-2 border rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
-                                  referralLinkMutation.isPending
+                                  loadingPlans[priceId]
                                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                     : "bg-white border-gray-300 hover:bg-gray-50"
                                 }`}
                               >
-                                {referralLinkMutation.isPending
+                                {loadingPlans[priceId]
                                   ? "Generating..."
                                   : "Copy Referral Link"}
                               </button>
@@ -421,8 +432,9 @@ const AffiliateDashboard = () => {
                           </div>
                           <div className="mt-4 pt-4 border-t border-purple-100">
                             <p className="text-xs text-gray-600">
-                              Earn {summary?.partner?.first_payment_percent}% on first payment
-                              + {summary?.partner?.recurring_percent}% recurring
+                              Earn {summary?.partner?.first_payment_percent}% on
+                              first payment +{" "}
+                              {summary?.partner?.recurring_percent}% recurring
                             </p>
                           </div>
                         </div>
@@ -431,8 +443,12 @@ const AffiliateDashboard = () => {
                   {summary && (
                     <div className="mt-6 p-4 bg-green-50 rounded-lg">
                       <p className="text-sm text-green-800">
-                        💡 <strong>Total Referral Earnings:</strong> {formatCurrency(summary.totals.accrued_minor)} |{" "}
-                        <strong>Active Referrals:</strong> {attributions?.filter(a => a.first_payment_commission_paid).length || 0}
+                        💡 <strong>Total Referral Earnings:</strong>{" "}
+                        {formatCurrency(summary.totals.accrued_minor)} |{" "}
+                        <strong>Active Referrals:</strong>{" "}
+                        {attributions?.filter(
+                          (a) => a.first_payment_commission_paid
+                        ).length || 0}
                       </p>
                     </div>
                   )}
@@ -463,21 +479,31 @@ const AffiliateDashboard = () => {
                     <span className="text-xl">1</span>
                   </div>
                   <h4 className="font-medium text-gray-900 mb-1">Share Link</h4>
-                  <p className="text-gray-600">Send your unique referral link to potential customers</p>
+                  <p className="text-gray-600">
+                    Send your unique referral link to potential customers
+                  </p>
                 </div>
                 <div className="text-center">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
                     <span className="text-xl">2</span>
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-1">Customer Signs Up</h4>
-                  <p className="text-gray-600">They choose a plan and complete payment</p>
+                  <h4 className="font-medium text-gray-900 mb-1">
+                    Customer Signs Up
+                  </h4>
+                  <p className="text-gray-600">
+                    They choose a plan and complete payment
+                  </p>
                 </div>
                 <div className="text-center">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
                     <span className="text-xl">3</span>
                   </div>
-                  <h4 className="font-medium text-gray-900 mb-1">Earn Commission</h4>
-                  <p className="text-gray-600">You earn commission automatically</p>
+                  <h4 className="font-medium text-gray-900 mb-1">
+                    Earn Commission
+                  </h4>
+                  <p className="text-gray-600">
+                    You earn commission automatically
+                  </p>
                 </div>
               </div>
             </div>
@@ -726,7 +752,8 @@ const AffiliateDashboard = () => {
                   You're an Affiliate
                 </h2>
                 <p className="text-green-700">
-                  Your affiliate account is active! Share your referral links and track commissions below.
+                  Your affiliate account is active! Share your referral links
+                  and track commissions below.
                 </p>
               </div>
             </div>
