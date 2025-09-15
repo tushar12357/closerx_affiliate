@@ -98,7 +98,7 @@ interface ReferralLinkResponse {
 
 const AffiliateDashboard = () => {
   const queryClient = useQueryClient();
-  const [withdrawalAmount, setWithdrawalAmount] = React.useState<string>("");
+  const [withdrawalAmount, setWithdrawalAmount] = useState<string>("");
   const [activeTab, setActiveTab] = useState("summary");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loadingPlans, setLoadingPlans] = useState<Record<string, boolean>>({});
