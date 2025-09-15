@@ -33,6 +33,21 @@ export const axiosInstance = axios.create({
   },
 });
 
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const accessToken = Cookies.get("access_token"); // Fetch token dynamically
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      delete config.headers.Authorization; // Remove header if no token
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 
 export const useGetUserData = (pk: number) => {
   return useQuery({
