@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { useGetUserData } from "../../api/api";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEditName, useProfileImage } from "../../api/api";
 import { UserDropdown } from "@/components/UserDropdown";
 
 const UserAccount = () => {
+  const router=useRouter()
   const { id } = useParams();
   const { data, isLoading, isError } = useGetUserData(id);
   const editNameMutation = useEditName();
@@ -32,6 +33,26 @@ const UserAccount = () => {
       <header className="bg-background-color-secondary shadow">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <div className="flex items-center">
+             <button
+              onClick={() => router.push("/")}
+              className="mr-4 text-white hover:text-gray-200 focus:outline-none"
+              aria-label="Go back to home"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
             <img
               src="https://new-closerx.s3.amazonaws.com/media/Whitelabel_domains/CloserX.ai_Logo_1_wLcruQT.png"
               alt="CloserX Logo"
