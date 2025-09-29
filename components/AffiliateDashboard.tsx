@@ -67,6 +67,7 @@ interface Attribution {
   created_at: string;
   updated_at: string;
   partner: number;
+  customer_email:string;
 }
 
 interface Withdrawal {
@@ -269,7 +270,7 @@ const AffiliateDashboard = () => {
       case "summary":
         return (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-sm border border-blue-200">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium text-blue-700">
@@ -294,6 +295,19 @@ const AffiliateDashboard = () => {
                   {summaryLoading
                     ? "..."
                     : formatCurrency(summary?.totals.paid_minor || 0)}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl shadow-sm border border-purple-200">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-purple-700">
+                    Total Approved
+                  </p>
+                  <span className="text-2xl">✔️</span>
+                </div>
+                <p className="text-3xl font-bold text-purple-900">
+                  {summaryLoading
+                    ? "..."
+                    : formatCurrency(summary?.totals.approved_minor || 0)}
                 </p>
               </div>
               <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl shadow-sm border border-yellow-200">
@@ -609,6 +623,9 @@ const AffiliateDashboard = () => {
                         Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         First Payment Paid
                       </th>
                     </tr>
@@ -621,6 +638,9 @@ const AffiliateDashboard = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {formatDate(attribution.created_at)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {attribution?.customer_email}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
