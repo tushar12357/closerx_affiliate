@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { Login } from "../api/api";
 import Cookies from "js-cookie";
+import { toast } from "react-toastify";
 
 type LoginFormValues = {
   email: string;
@@ -24,20 +25,115 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-
-  
   const searchParams = useSearchParams();
   const accessToken = searchParams.get("access_token");
   const refreshToken = searchParams.get("refresh_token");
   const userId = searchParams.get("user_id");
+  const encryptedData = searchParams.get("data");
   useEffect(() => {
-    if (accessToken && refreshToken && userId) {
-      Cookies.set("access_token", accessToken);
-      Cookies.set("refresh_token", refreshToken);
-      Cookies.set("user_id", userId);
-      router.push("/");
-    }
-  }, [searchParams, router]);
+    const decryptAndStoreData = async () => {
+      if (encryptedData) {
+        try {
+          const SECRET_KEY = process.env.NEXT_PUBLIC_SECRET_KEY; // Replace with secure key injection
+          const [ivBase64, encryptedBase64] = encryptedData.split(":");
+          if (!ivBase64 || !encryptedBase64) {
+            throw new Error("Invalid encrypted data format");
+          }
+
+          const iv = new Uint8Array(
+            atob(ivBase64)
+              .split("")
+              .map((c) => c.charCodeAt(0))
+          );
+          const encrypted = new Uint8Array(
+            atob(encryptedBase64)
+              .split("")
+              .map((c) => c.charCodeAt(0))
+          );
+
+          const key = await crypto.subtle.importKey(
+            "raw",
+            new Uint8Array(
+              atob(SECRET_KEY)
+                .split("")
+                .map((c) => c.charCodeAt(0))
+            ),
+            { name: "AES-GCM" },
+            false,
+            ["decrypt"]
+          );
+
+          const decrypted = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            key,
+            encrypted
+          );
+          const decoder = new TextDecoder();
+          const authData = JSON.parse(decoder.decode(decrypted));
+
+          const {
+            access_token,
+            refresh_token,
+            company_name,
+            user_id,
+            first_name,
+            ghl_connected,
+            salesforce_connected,
+            term_condition_excepted,
+            twilio_type,
+            expires_at,
+          } = authData;
+
+          if (Date.now() > expires_at) {
+            throw new Error("Authentication data has expired");
+          }
+
+          console.log("Decrypted tokens:", {
+            access_token,
+            refresh_token,
+            company_name,
+            user_id,
+            first_name,
+          });
+
+          const cookieOptions = {
+            path: "/",
+            secure: process.env.NODE_ENV === "production",
+            expires: 36500, // ~100 years
+          };
+
+          Cookies.set("access_token", access_token, cookieOptions);
+          Cookies.set("refresh_token", refresh_token, cookieOptions);
+          Cookies.set("companyName", company_name, cookieOptions);
+
+          typeof window !== "undefined" &&
+            localStorage.setItem("ghl_connected", ghl_connected.toString());
+          typeof window !== "undefined" &&
+            localStorage.setItem(
+              "salesforce_connection",
+              salesforce_connected.toString()
+            );
+          typeof window !== "undefined" &&
+            localStorage.setItem(
+              "term_condition_excepted",
+              term_condition_excepted.toString()
+            );
+          typeof window !== "undefined" &&
+            localStorage.setItem("twilio_type", twilio_type);
+
+         
+          router.push("/");
+        } catch (error) {
+          console.error("Error decrypting data:", error);
+          toast.error(
+            "Failed to process authentication data. Please try again."
+          );
+        }
+      }
+    };
+
+    decryptAndStoreData();
+  }, [encryptedData, router]);
 
   const loginMutation = useMutation({
     mutationFn: Login,
